@@ -17,14 +17,15 @@ namespace DownloadImages.Controllers
         [HttpPost("download")]
         public async Task<IActionResult> DownloadImages([FromBody] string siteUrl)
         {
+            var siteName = siteUrl.Split("//")[1];
             var html = await GetHtmlAsync(siteUrl);
             var images = await GetImagesSrc(html);
 
             if (images.Count() == 0)
                 return BadRequest("Images not found");
 
-            var paths = await SaveImagesLocal(images);
-            return Ok($"Task completed! \n {paths}");
+            var paths = await SaveImagesLocal(images, siteName);
+            return Ok(paths);
         }
 
         private async Task<string> GetHtmlAsync(string url)
@@ -59,7 +60,7 @@ namespace DownloadImages.Controllers
         /// make an HTTP Get request, then read the response content into a memory stream which can be copied to a physical file.
         /// </summary>
         /// <returns>Collection of files path</returns>
-        private async Task<IEnumerable<string>> SaveImagesLocal(IEnumerable<string> imagesSrc)
+        private async Task<IEnumerable<string>> SaveImagesLocal(IEnumerable<string> imagesSrc, string siteName)
         {
             var path = Path.Combine(Directory.GetCurrentDirectory(), "ImagesStorage");
             var imagesName = new List<string>();
@@ -68,12 +69,14 @@ namespace DownloadImages.Controllers
                 Directory.CreateDirectory(path);
             }
 
+            var fileDocPath = Path.Combine(path, $"{siteName}");
+            Directory.CreateDirectory(fileDocPath);
             foreach (var src in imagesSrc)
             {
                 var fileInfo = new FileInfo(src);
                 if (!string.IsNullOrEmpty(fileInfo.Extension))
                 {
-                    var filePath = Path.Combine(path, $"{Guid.NewGuid()}{fileInfo.Extension}");
+                    var filePath = Path.Combine(fileDocPath, $"{Guid.NewGuid()}{fileInfo.Extension}");
                     var response = await _httpClient.GetAsync(src);
                     await using var ms = await response.Content.ReadAsStreamAsync();
                     await using var fs = System.IO.File.Create(filePath);
