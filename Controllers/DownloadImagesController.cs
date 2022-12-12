@@ -19,11 +19,12 @@ namespace DownloadImages.Controllers
         {
             var html = await GetHtmlAsync(siteUrl);
             var images = await GetImagesSrc(html);
+
             if (images.Count() == 0)
                 return BadRequest("Images not found");
 
-            await SaveImagesLocal(images);
-            return Ok("Task completed");
+            var paths = await SaveImagesLocal(images);
+            return Ok($"Task completed! \n {paths}");
         }
 
         private async Task<string> GetHtmlAsync(string url)
@@ -57,10 +58,11 @@ namespace DownloadImages.Controllers
         /// <summary>
         /// make an HTTP Get request, then read the response content into a memory stream which can be copied to a physical file.
         /// </summary>
-        private async Task<bool> SaveImagesLocal(IEnumerable<string> imagesSrc)
+        /// <returns>Collection of files path</returns>
+        private async Task<IEnumerable<string>> SaveImagesLocal(IEnumerable<string> imagesSrc)
         {
             var path = Path.Combine(Directory.GetCurrentDirectory(), "ImagesStorage");
-
+            var imagesName = new List<string>();
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
@@ -77,10 +79,11 @@ namespace DownloadImages.Controllers
                     await using var fs = System.IO.File.Create(filePath);
                     ms.Seek(0, SeekOrigin.Begin);
                     ms.CopyTo(fs);
+                    imagesName.Add(filePath);
                 }
             }
 
-            return true;
+            return imagesName;
         }
     }
 }
